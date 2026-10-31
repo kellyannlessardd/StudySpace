@@ -1,122 +1,194 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import "./App.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+function getColor(dueDate) {
+  const today = new Date();
+  const due = new Date(dueDate);
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
 
-      <div className="ticks"></div>
+  const days = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+  if (days <= 7) return "red";
+  if (days <= 14) return "orange";
+  if (days <= 21) return "yellow";
+  if (days <= 28) return "green";
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+  return "#666";
 }
 
-export default App
+function App() {
+  const [assignments, setAssignments] = useState([]);
+  const [title, setTitle] = useState("");
+  const [courseCode, setCourseCode] = useState("");
+  const [dueDate, setDueDate] = useState("");
+
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    fetch("http://localhost:3000/api/assignments")
+      .then((res) => res.json())
+      .then((data) => setAssignments(data))
+      .catch((err) => console.error(err));
+  }, []);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    const newAssignment = {
+      title,
+      courseCode,
+      dueDate,
+    };
+
+    fetch("http://localhost:3000/api/assignments", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newAssignment),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setAssignments((prev) => [...prev, data]);
+
+        setTitle("");
+        setCourseCode("");
+        setDueDate("");
+      })
+      .catch((err) => console.error(err));
+  };
+
+  const handleCompleteClick = (assignment) => {
+    setSelectedAssignment(assignment);
+    setShowModal(true);
+  };
+
+  const confirmComplete = () => {
+    fetch(`http://localhost:3000/api/assignments/${selectedAssignment.id}`, {
+      method: "DELETE",
+    })
+      .then(() => {
+        setAssignments((prev) =>
+          prev.filter((a) => a.id !== selectedAssignment.id),
+        );
+
+        setShowModal(false);
+        setSelectedAssignment(null);
+      })
+      .catch((err) => console.error(err));
+  };
+
+  const cancelComplete = () => {
+    setShowModal(false);
+    setSelectedAssignment(null);
+  };
+
+  return (
+    <div className="container">
+      <header>
+        <h1>StudySpace</h1>
+        <p>Track your assignments and deadlines</p>
+      </header>
+
+      <main>
+        <section className="form-panel">
+          <h2>Add Assignment</h2>
+
+          <form onSubmit={handleSubmit}>
+            <input
+              type="text"
+              placeholder="Assignment Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+
+            <input
+              type="text"
+              placeholder="Course Code"
+              value={courseCode}
+              onChange={(e) => setCourseCode(e.target.value)}
+              required
+            />
+
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              required
+            />
+
+            <button type="submit">Add Assignment</button>
+          </form>
+        </section>
+
+        <section className="timeline-panel">
+          <h2>Upcoming Assignments</h2>
+
+          {assignments.map((assignment) => (
+            <div
+              key={assignment.id}
+              className="assignment-card"
+              style={{
+                borderLeftColor: getColor(assignment.dueDate),
+              }}
+            >
+              <h3>{assignment.title}</h3>
+
+              <p className="course-code">{assignment.courseCode}</p>
+
+              <p>
+                {new Date(assignment.dueDate).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </p>
+
+              <button
+                className="complete-btn"
+                onClick={() => handleCompleteClick(assignment)}
+              >
+                Complete Assignment
+              </button>
+            </div>
+          ))}
+        </section>
+      </main>
+
+      {showModal && selectedAssignment && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Complete Assignment</h2>
+
+            <p>
+              <strong>{selectedAssignment.title}</strong>
+            </p>
+
+            <p>{selectedAssignment.courseCode}</p>
+
+            <p>
+              Are you sure you have completed all of the requirements for this
+              assignment?
+            </p>
+
+            <div className="modal-buttons">
+              <button className="cancel-btn" onClick={cancelComplete}>
+                Cancel
+              </button>
+
+              <button className="confirm-btn" onClick={confirmComplete}>
+                Mark Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default App;

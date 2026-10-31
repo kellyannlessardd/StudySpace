@@ -1,4 +1,4 @@
-
+console.log("Loaded my server file");
 
 import express from "express";
 import cors from "cors";
@@ -20,29 +20,21 @@ async function getData() {
 
 // Save changes to the JSON file
 async function saveData(data) {
-  await writeFile(
-    DATA_FILE,
-    JSON.stringify(data, null, 2),
-    "utf-8"
-  );
+  await writeFile(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
 
 // Validate assignment information
 function validateAssignment(body) {
-  const { title, courseId, dueDate, priority, status } = body;
+  const { title, courseCode, dueDate } = body;
 
   if (
     typeof title !== "string" ||
     !title.trim() ||
-    !Number.isInteger(courseId) ||
     typeof dueDate !== "string" ||
     !/^\d{4}-\d{2}-\d{2}$/.test(dueDate) ||
-    Number.isNaN(Date.parse(dueDate)) ||
-    new Date(`${dueDate}T00:00:00.000Z`).toISOString().slice(0, 10) !== dueDate ||
-    !["Low", "Medium", "High"].includes(priority) ||
-    !["Not Started", "In Progress", "Completed"].includes(status)
+    Number.isNaN(Date.parse(dueDate))
   ) {
-    return "Please provide a valid title, course, date, priority, and status.";
+    return "Please provide a valid title and due date.";
   }
 
   return null;
@@ -62,26 +54,20 @@ app.get("/api/assignments", async (req, res) => {
     const { courseId, priority, status, search, sortBy, order } = req.query;
 
     if (courseId) {
-      assignments = assignments.filter(
-        (a) => a.courseId === Number(courseId)
-      );
+      assignments = assignments.filter((a) => a.courseId === Number(courseId));
     }
 
     if (priority) {
-      assignments = assignments.filter(
-        (a) => a.priority === priority
-      );
+      assignments = assignments.filter((a) => a.priority === priority);
     }
 
     if (status) {
-      assignments = assignments.filter(
-        (a) => a.status === status
-      );
+      assignments = assignments.filter((a) => a.status === status);
     }
 
     if (search) {
-      assignments = assignments.filter(
-        (a) => a.title.toLowerCase().includes(search.toLowerCase())
+      assignments = assignments.filter((a) =>
+        a.title.toLowerCase().includes(search.toLowerCase()),
       );
     }
 
@@ -104,7 +90,7 @@ app.get("/api/assignments/:id", async (req, res) => {
   try {
     const data = await getData();
     const assignment = data.assignments.find(
-      (a) => a.id === Number(req.params.id)
+      (a) => a.id === Number(req.params.id),
     );
 
     if (!assignment) {
@@ -122,37 +108,34 @@ app.get("/api/assignments/:id", async (req, res) => {
 app.post("/api/assignments", async (req, res) => {
   try {
     const data = await getData();
-    const error = validateAssignment(req.body);
 
-    if (error) {
-      return res.status(400).json({ error });
-    }
+    const { title, courseCode, dueDate } = req.body;
 
-    const courseExists = data.courses.some(
-      (course) => course.id === req.body.courseId
-    );
-
-    if (!courseExists) {
-      return res.status(400).json({ error: "Course does not exist." });
+    if (!title || !courseCode || !dueDate) {
+      return res.status(400).json({
+        error: "Please provide title, course code, and due date.",
+      });
     }
 
     const assignment = {
       id: Math.max(0, ...data.assignments.map((a) => a.id)) + 1,
-      title: req.body.title.trim(),
-      description: req.body.description || "",
-      courseId: req.body.courseId,
-      dueDate: req.body.dueDate,
-      priority: req.body.priority,
-      status: req.body.status
+
+      title: title.trim(),
+      courseCode: courseCode.trim().toUpperCase(),
+      dueDate,
     };
 
     data.assignments.push(assignment);
+
     await saveData(data);
 
     res.status(201).json(assignment);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Could not create assignment." });
+
+    res.status(500).json({
+      error: "Could not create assignment.",
+    });
   }
 });
 
@@ -161,7 +144,7 @@ app.patch("/api/assignments/:id", async (req, res) => {
   try {
     const data = await getData();
     const index = data.assignments.findIndex(
-      (a) => a.id === Number(req.params.id)
+      (a) => a.id === Number(req.params.id),
     );
 
     if (index === -1) {
@@ -171,7 +154,7 @@ app.patch("/api/assignments/:id", async (req, res) => {
     const updated = {
       ...data.assignments[index],
       ...req.body,
-      id: data.assignments[index].id
+      id: data.assignments[index].id,
     };
 
     const error = validateAssignment(updated);
@@ -181,7 +164,7 @@ app.patch("/api/assignments/:id", async (req, res) => {
     }
 
     const courseExists = data.courses.some(
-      (course) => course.id === updated.courseId
+      (course) => course.id === updated.courseId,
     );
 
     if (!courseExists) {
@@ -204,7 +187,7 @@ app.delete("/api/assignments/:id", async (req, res) => {
   try {
     const data = await getData();
     const index = data.assignments.findIndex(
-      (a) => a.id === Number(req.params.id)
+      (a) => a.id === Number(req.params.id),
     );
 
     if (index === -1) {
@@ -236,5 +219,3 @@ app.get("/api/courses", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`StudySpace API running at http://localhost:${PORT}`);
 });
-
-
