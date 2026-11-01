@@ -47,3 +47,5 @@ Les requêtes API peuvent être vérifiées manuellement avec Postman.
 Les tests manuels peuvent inclure la vérification de l'affichage des travaux, l'ajout d'un nouveau travail, la modification d'un travail, sa suppression et la vérification que les données sont correctement enregistrées dans le fichier JSON.
 
 Les tests automatisés ne sont pas actuellement configurés.
+
+https://github.com/kellyannlessardd/StudySpace
